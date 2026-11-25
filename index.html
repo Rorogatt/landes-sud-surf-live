@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sud Landes Surf Live — Webcams Direct, Houle, Marées SHOM &amp; Affluence (Moliets → Tarnos)</title>
+  <meta
+    name="description"
+    content="Observatoire surf en temps réel des 19 spots de la Côte Sud des Landes (Moliets, Messanges, Vieux-Boucau, Soustons, Seignosse, Hossegor, Capbreton, Labenne, Ondres, Tarnos) : webcams live multi-angles, réfraction du Gouf de Capbreton, vent Météo-France AROME 1.5 km, marées SHOM &amp; coefficients, bouées houlographes et monde à l'eau."
+  />
+  <meta name="theme-color" content="#0d151c" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="./css/index.css" />
+  <script src="./vendor/hls.min.js" defer></script>
+</head>
+<body>
+  <!-- Bandeau supérieur de télémétrie côtière en direct -->
+  <header class="topbar-telemetry">
+    <div class="topbar-inner">
+      <div class="brand-block">
+        <h1 class="brand-title">Sud Landes Surf Live</h1>
+        <span class="brand-subtitle">Moliets → Hossegor / Capbreton → Tarnos · 19 Spots</span>
+      </div>
+
+      <div class="coastal-pulse-strip" id="coastal-pulse-strip" aria-live="polite">
+        <div class="pulse-metric">
+          <span class="pulse-label">Heure Côte (40)</span>
+          <span class="pulse-value" id="pulse-clock">--h--</span>
+        </div>
+        <div class="pulse-metric">
+          <span class="pulse-label">Marée Capbreton</span>
+          <span class="pulse-value" id="pulse-tide">Calcul...</span>
+        </div>
+        <div class="pulse-metric">
+          <span class="pulse-label">Bouée Large 43.6°N</span>
+          <span class="pulse-value" id="pulse-buoy">Connexion...</span>
+        </div>
+        <div class="pulse-metric">
+          <span class="pulse-label">Eau / Air</span>
+          <span class="pulse-value" id="pulse-temps">--°C / --°C</span>
+        </div>
+        <div class="pulse-metric">
+          <span class="pulse-label">Meilleur Spot Actuel</span>
+          <span class="pulse-value" id="pulse-best-spot">--</span>
+        </div>
+      </div>
+
+      <div class="topbar-controls">
+        <button type="button" class="btn-ghost mono" id="btn-wind-unit" title="Changer l'unité de vent (km/h ou nœuds)">
+          km/h
+        </button>
+        <button type="button" class="btn-ghost" id="btn-theme-toggle" title="Basculer entre thème Encre Atlantique et Dune Claire">
+          Mode Clair
+        </button>
+        <button type="button" class="btn-ghost" id="btn-refresh-live" title="Forcer l'actualisation des bouées et modèles">
+          ↻ Actualiser
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation des vues & Machine à remonter/avancer le temps (168h) -->
+  <nav class="subbar-nav" aria-label="Modes d'exploration et sélecteur temporel">
+    <div class="mode-tabs" role="tablist">
+      <button type="button" class="mode-tab is-active" id="tab-radar" data-mode="radar" role="tab" aria-selected="true">
+        Radar &amp; 19 Spots <span class="mode-tab-count" id="count-spots">19</span>
+      </button>
+      <button type="button" class="mode-tab" id="tab-wall" data-mode="wall" role="tab" aria-selected="false">
+        Mur Vidéo Webcams <span class="mode-tab-count" id="count-cams">--</span>
+      </button>
+      <button type="button" class="mode-tab" id="tab-sessions" data-mode="sessions" role="tab" aria-selected="false">
+        Meilleurs Créneaux 48h &amp; Comparateur
+      </button>
+      <button type="button" class="mode-tab" id="tab-buoys" data-mode="buoys" role="tab" aria-selected="false">
+        Bouées Temps Réel &amp; Gouf de Capbreton
+      </button>
+    </div>
+
+    <div class="time-scrubber-bar">
+      <button type="button" class="live-indicator-btn is-live" id="btn-live-now">
+        <span class="live-dot"></span> EN DIRECT
+      </button>
+      <div class="time-quick-presets" id="time-quick-presets">
+        <button type="button" class="preset-btn" data-preset="tomorrow-dawn">Demain Aube 08h</button>
+        <button type="button" class="preset-btn" data-preset="tomorrow-noon">Demain 12h</button>
+        <button type="button" class="preset-btn" data-preset="tomorrow-glassoff">Demain 17h</button>
+      </div>
+      <div class="time-slider-wrap">
+        <input
+          type="range"
+          id="time-slider-168h"
+          class="time-slider-input"
+          min="0"
+          max="168"
+          step="1"
+          value="0"
+          aria-label="Explorer les conditions heure par heure sur 7 jours"
+        />
+        <span class="time-readout-label" id="time-readout-label">Temps réel (Direct)</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Contenu principal multi-vues -->
+  <main class="app-main">
+    <!-- ==================== VUE 1 : RADAR CÔTIER & INSPECTEUR ==================== -->
+    <section id="view-radar" aria-label="Radar des spots des Landes du Sud">
+      <div class="filter-toolbar">
+        <div class="filter-group">
+          <input
+            type="search"
+            id="search-spots"
+            class="search-input"
+            placeholder="Rechercher un spot (Gravière, Santocha, Digue, Huchet...)"
+            aria-label="Rechercher un spot"
+          />
+          <select id="filter-commune" class="select-input" aria-label="Filtrer par commune">
+            <option value="all">Toutes les communes (Moliets → Tarnos)</option>
+            <option value="Moliets-et-Maâ">Moliets-et-Maâ</option>
+            <option value="Messanges">Messanges</option>
+            <option value="Vieux-Boucau-les-Bains">Vieux-Boucau</option>
+            <option value="Soustons">Soustons-Plage</option>
+            <option value="Seignosse">Seignosse (4 spots)</option>
+            <option value="Soorts-Hossegor">Hossegor (4 spots)</option>
+            <option value="Capbreton">Capbreton (4 spots)</option>
+            <option value="Labenne">Labenne-Océan</option>
+            <option value="Ondres">Ondres</option>
+            <option value="Tarnos">Tarnos</option>
+          </select>
+          <select id="sort-spots" class="select-input" aria-label="Trier les spots">
+            <option value="north-south">Ordre Côte : Nord → Sud</option>
+            <option value="score-desc">Meilleures conditions actuelles</option>
+            <option value="crowd-asc">Moins de monde à l'eau</option>
+            <option value="wave-desc">Taille de vagues décroissante</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <button type="button" class="btn-chip" id="filter-cams-only">Webcams Live uniquement</button>
+          <button type="button" class="btn-chip" id="filter-fallback-only" title="Spots protégés de la grosse houle ou du vent">
+            Spots de Repli / Abri
+          </button>
+          <button type="button" class="btn-chip" id="filter-low-crowd">Peu fréquenté</button>
+          <button type="button" class="btn-chip" id="filter-favorites-only">★ Favoris</button>
+        </div>
+      </div>
+
+      <div class="radar-workspace">
+        <!-- Colonne Gauche : Carte Océanographique Interactive & Gouf -->
+        <aside class="panel-surface coast-map-sticky" aria-label="Carte océanographique Côte Sud Landes">
+          <div class="panel-header">
+            <h2 class="panel-title">Atlas Côtier &amp; Gouf de Capbreton</h2>
+            <button type="button" class="btn-ghost" id="btn-toggle-gouf-rays" style="padding:0.2rem 0.5rem;font-size:0.73rem;">
+              Rayons Gouf : ON
+            </button>
+          </div>
+          <div id="coast-map-mount"></div>
+          <div class="map-legend-footer">
+            <div class="legend-items">
+              <span class="legend-swatch"><span class="swatch-dot" style="background:var(--accent-sea)"></span>Épique/Opt.</span>
+              <span class="legend-swatch"><span class="swatch-dot" style="background:var(--accent-amber)"></span>Jouable</span>
+              <span class="legend-swatch"><span class="swatch-dot" style="background:var(--accent-coral)"></span>Saturé/Venté</span>
+            </div>
+            <span class="mono">● = Webcam</span>
+          </div>
+        </aside>
+
+        <!-- Colonne Centrale : Liste vivante des 19 Spots -->
+        <div class="spots-list-column" id="spots-list-mount" role="list" aria-label="Liste des spots de surf"></div>
+
+        <!-- Colonne Droite : Inspecteur Complet du Spot Sélectionné -->
+        <aside class="panel-surface spot-inspector-panel" id="spot-inspector-mount" aria-live="polite"></aside>
+      </div>
+    </section>
+
+    <!-- ==================== VUE 2 : MUR VIDÉO WEBCAMS EN DIRECT ==================== -->
+    <section id="view-wall" class="hidden" aria-label="Mur vidéo multi-webcams Côte Sud des Landes">
+      <div class="wall-toolbar">
+        <div>
+          <h2 style="margin:0;font-family:var(--font-serif);font-size:1.6rem;font-weight:400;">
+            Mur de Surveillance Live — Webcams Côte Sud des Landes
+          </h2>
+          <p style="margin:0.2rem 0 0;font-size:0.83rem;color:var(--text-secondary);">
+            Visualisez simultanément les line-ups, le plan d'eau et le monde au pic de Moliets à Tarnos sans ouvrir 12 onglets.
+          </p>
+        </div>
+        <div class="filter-group">
+          <button type="button" class="btn-chip is-active" data-wall-layout="auto" id="wall-layout-auto">Grille Fluide</button>
+          <button type="button" class="btn-chip" data-wall-layout="grid-2x2" id="wall-layout-2x2">Focus 2×2 Grand Format</button>
+          <button type="button" class="btn-chip" data-wall-layout="grid-3x3" id="wall-layout-3x3">Mosaïque 3×3</button>
+          <select id="wall-zone-filter" class="select-input" aria-label="Filtrer les webcams par secteur">
+            <option value="all">Tous les secteurs (Nord → Sud)</option>
+            <option value="north">Nord : Moliets · Messanges · Vieux-Boucau · Soustons</option>
+            <option value="seignosse">Seignosse : Penon · Bourdaines · Estagnots</option>
+            <option value="hossegor">Hossegor : Culs Nus · Gravière · Nord · Sud</option>
+            <option value="capbreton">Capbreton : Estacade · Prévent · Santocha · Piste</option>
+            <option value="south">Seignanx : Labenne · Ondres · Tarnos</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="webcam-wall-grid" id="webcam-wall-mount"></div>
+    </section>
+
+    <!-- ==================== VUE 3 : CRÉNEAUX 48H & COMPARATEUR ==================== -->
+    <section id="view-sessions" class="hidden" aria-label="Meilleures sessions des prochaines 48h et comparateur">
+      <div style="margin-bottom:1.1rem;">
+        <h2 style="margin:0;font-family:var(--font-serif);font-size:1.6rem;font-weight:400;">
+          Radar des Meilleurs Créneaux (Prochaines 48 heures)
+        </h2>
+        <p style="margin:0.2rem 0 0;font-size:0.83rem;color:var(--text-secondary);">
+          Scan automatique des 19 spots × 48h croisant houle réfractée par le Gouf, vent AROME 1.5 km, fenêtre de marée propre à chaque banc et lumière du jour. Cliquez sur un créneau pour projeter toute la carte à cette heure.
+        </p>
+      </div>
+
+      <div class="sessions-grid" id="best-sessions-mount"></div>
+
+      <div style="margin:1.8rem 0 0.9rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;">
+        <div>
+          <h2 style="margin:0;font-family:var(--font-serif);font-size:1.55rem;font-weight:400;">
+            Comparateur Technique Face-à-Face (3 Spots)
+          </h2>
+          <p style="margin:0.15rem 0 0;font-size:0.82rem;color:var(--text-secondary);">
+            Comparez instantanément l'effet du Gouf, l'abri au vent, la marée idéale et l'affluence entre 3 spots.
+          </p>
+        </div>
+        <div class="filter-group" id="comparator-selectors"></div>
+      </div>
+
+      <div class="comparator-table-wrap" id="comparator-table-mount"></div>
+    </section>
+
+    <!-- ==================== VUE 4 : BOUÉES TEMPS RÉEL & GOUF ==================== -->
+    <section id="view-buoys" class="hidden" aria-label="Bouées houlographes en temps réel et mécanique du Gouf de Capbreton">
+      <div style="margin-bottom:1.1rem;">
+        <h2 style="margin:0;font-family:var(--font-serif);font-size:1.6rem;font-weight:400;">
+          Sentinelles Houlographes en Temps Réel (Golfe de Gascogne Sud)
+        </h2>
+        <p style="margin:0.2rem 0 0;font-size:0.83rem;color:var(--text-secondary);">
+          Mesures physiques in-situ (Hm0 significative, Hmax série maximale, Période au pic Tp et Température de surface) permettant d'anticiper l'arrivée des trains de houle 1h30 à 8h avant la côte landaise.
+        </p>
+      </div>
+
+      <div class="buoys-grid" id="buoys-grid-mount"></div>
+
+      <div class="panel-surface" style="padding:1.35rem;" id="gouf-explainer-mount"></div>
+    </section>
+  </main>
+
+  <footer style="max-width:1640px;margin:0 auto;padding:1.2rem 1.25rem 2.4rem;border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;font-size:0.77rem;color:var(--text-muted);">
+    <div>
+      <strong>Sud Landes Surf Live</strong> · Observatoire Open-Source Côte Sud des Landes (Moliets-et-Maâ → Tarnos)
+    </div>
+    <div class="mono">
+      Sources : Modèle Météo-France AROME 1.5 km · CMEMS Marine · Calibration SHOM Capbreton/Boucau · Bouées EUSKOOS &amp; Portus · Webcams locales
+    </div>
+  </footer>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
