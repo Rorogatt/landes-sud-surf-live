@@ -1,11 +1,12 @@
 {
   "name": "landes-sud-surf-live",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Radar surf temps réel des 19 spots des Landes du Sud (Moliets -> Tarnos) : webcams live HLS/embeds, houle & réfraction du Gouf de Capbreton, vent Météo-France AROME 1.5km, marées SHOM & coefficients, bouées houlographes et affluence.",
+  "description": "Observatoire surf temps réel v2 des 19 spots des Landes du Sud (Moliets -> Tarnos) : webcams HD avec loupe line-up, Gouf de Capbreton, vent AROME 1.5km, marées SHOM, baïnes, qualité d'eau 48h, profils par niveau et PWA hors-ligne.",
   "scripts": {
     "dev": "python3 -m http.server 4173 --bind 0.0.0.0",
-    "start": "python3 -m http.server 4173 --bind 0.0.0.0"
+    "start": "python3 -m http.server 4173 --bind 0.0.0.0",
+    "judge": "node ./scripts/judge-audit.mjs"
   }
 }

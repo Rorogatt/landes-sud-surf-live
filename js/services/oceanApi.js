@@ -1,17 +1,17 @@
 /**
- * Service Océanographique & Météo AROME HD 1.5 km (100% Client-Side, Sans Clé API).
+ * Service Océanographique & Météo AROME HD 1.5 km (v2 — Offline-Resilient & Pluie 48h).
  *
  * Interroge en 2 appels HTTP batchés seulement (1 Marine + 1 Weather AROME/IFS)
  * l'ensemble des 19 spots des Landes du Sud (de Moliets à Tarnos), avec :
- * - Houle totale, Houle primaire (Hs, Tp pic réel via swell_wave_peak_period, Dir), Houle secondaire, Mer du vent
- * - Température de l'eau (SST), Courant marin côtier, Hauteur d'eau MSL (pour marées SHOM +38 min)
- * - Vent AROME 1.5 km en direct + nowcast 15 minutes (`minutely_15`), rafales, température ressentie, pression, UV, visibilité, lever/coucher du soleil.
+ * - Historique `past_days=2` pour calculer les cumuls glissants de pluie 24h et 48h (panaches estuariens)
+ * - Fallback `stale-on-error` : conserve et restitue le cache local en zone blanche 4G (pinède des Casernes / Huchet)
+ * - Réfraction bathymétrique du Gouf de Capbreton modulée par la période ET l'angle de houle.
  */
 
 import { parseParisLocalISO } from './time.js';
 import { getTideStateAt, getSpotTidePhaseShiftMin } from './tides.js';
 
-const CACHE_KEY = 'landes_surf_ocean_v2';
+const CACHE_KEY = 'landes_surf_ocean_v3';
 const CACHE_TTL_MS = 12 * 60_000; // 12 minutes
 
 const MARINE_CURRENT_FIELDS = [
@@ -121,8 +121,7 @@ export function describeWeatherCodeFR(code, isDay = 1) {
 }
 
 /**
- * Calcule l'énergie de houle en kJ (formule surf classique : E ≈ 0.5 * g * rho * Hs^2 * L,
- * normalisée à l'échelle Surf-Forecast familière aux surfeurs : kJ ≈ 2.05 * Hs^2 * Tp^2).
+ * Calcule l'énergie de houle en kJ (formule surf : kJ ≈ 2.05 * Hs^2 * Tp^2).
  */
 export function computeSurfEnergyKj(hsMeters, tpSec) {
   if (!hsMeters || !tpSec) return 0;
@@ -130,24 +129,26 @@ export function computeSurfEnergyKj(hsMeters, tpSec) {
 }
 
 /**
- * Charge en parallèle (batch CSV) les données Marine + Météo AROME pour tous les spots.
+ * Charge en parallèle (batch CSV) les données Marine + Météo AROME pour tous les spots,
+ * avec conservation automatique du cache (`stale-on-error`) si la 4G coupe en forêt.
  */
 export async function fetchAllSpotsTelemetry(spots, { forceRefresh = false } = {}) {
-  if (!forceRefresh) {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Date.now() - parsed.savedAt < CACHE_TTL_MS && parsed.bySpotId) {
-          return parsed;
+  let staleFallback = null;
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(CACHE_KEY) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.bySpotId) {
+        staleFallback = parsed;
+        if (!forceRefresh && Date.now() - parsed.savedAt < CACHE_TTL_MS) {
+          return { ...parsed, isStaleCache: false };
         }
       }
-    } catch {
-      // Ignore storage error
     }
+  } catch {
+    // Ignore storage read error
   }
 
-  // Coordonnées mer (`offshoreApiPoint` ou `peak`) pour Marine, coordonnées plage/pic pour AROME
   const marineLats = spots.map((s) => (s.coordinates.offshoreApiPoint?.lat ?? s.coordinates.peak.lat).toFixed(4)).join(',');
   const marineLons = spots.map((s) => (s.coordinates.offshoreApiPoint?.lon ?? s.coordinates.peak.lon).toFixed(4)).join(',');
 
@@ -159,7 +160,7 @@ export async function fetchAllSpotsTelemetry(spots, { forceRefresh = false } = {
     `&current=${MARINE_CURRENT_FIELDS}` +
     `&hourly=${MARINE_HOURLY_FIELDS}` +
     `&daily=${MARINE_DAILY_FIELDS}` +
-    `&timezone=Europe%2FParis&past_days=1&forecast_days=8`;
+    `&timezone=Europe%2FParis&past_days=2&forecast_days=8`;
 
   const weatherUrl =
     `https://api.open-meteo.com/v1/forecast?latitude=${weatherLats}&longitude=${weatherLons}` +
@@ -167,44 +168,51 @@ export async function fetchAllSpotsTelemetry(spots, { forceRefresh = false } = {
     `&minutely_15=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,weather_code` +
     `&hourly=${WEATHER_HOURLY_FIELDS}` +
     `&daily=${WEATHER_DAILY_FIELDS}` +
-    `&timezone=Europe%2FParis&past_days=1&forecast_days=8&forecast_minutely_15=24`;
-
-  const [marineRes, weatherRes] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
-  if (!marineRes.ok) throw new Error(`Erreur API Marine (${marineRes.status})`);
-  if (!weatherRes.ok) throw new Error(`Erreur API Météo AROME (${weatherRes.status})`);
-
-  const [marineRaw, weatherRaw] = await Promise.all([marineRes.json(), weatherRes.json()]);
-  const marineList = Array.isArray(marineRaw) ? marineRaw : [marineRaw];
-  const weatherList = Array.isArray(weatherRaw) ? weatherRaw : [weatherRaw];
-
-  const bySpotId = {};
-  spots.forEach((spot, idx) => {
-    const m = marineList[idx] || marineList[0];
-    const w = weatherList[idx] || weatherList[0];
-    bySpotId[spot.id] = {
-      marine: m,
-      weather: w,
-    };
-  });
-
-  const payload = {
-    savedAt: Date.now(),
-    bySpotId,
-  };
+    `&timezone=Europe%2FParis&past_days=2&forecast_days=8&forecast_minutely_15=24`;
 
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
-  } catch {
-    // Ignore storage quota if full
-  }
+    const [marineRes, weatherRes] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
+    if (!marineRes.ok) throw new Error(`Erreur API Marine (${marineRes.status})`);
+    if (!weatherRes.ok) throw new Error(`Erreur API Météo AROME (${weatherRes.status})`);
 
-  return payload;
+    const [marineRaw, weatherRaw] = await Promise.all([marineRes.json(), weatherRes.json()]);
+    const marineList = Array.isArray(marineRaw) ? marineRaw : [marineRaw];
+    const weatherList = Array.isArray(weatherRaw) ? weatherRaw : [weatherRaw];
+
+    const bySpotId = {};
+    spots.forEach((spot, idx) => {
+      bySpotId[spot.id] = {
+        marine: marineList[idx] || marineList[0],
+        weather: weatherList[idx] || weatherList[0],
+      };
+    });
+
+    const payload = {
+      savedAt: Date.now(),
+      isStaleCache: false,
+      bySpotId,
+    };
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+      }
+    } catch {
+      // Ignore storage quota if full
+    }
+
+    return payload;
+  } catch (err) {
+    if (staleFallback) {
+      return { ...staleFallback, isStaleCache: true };
+    }
+    throw err;
+  }
 }
 
 /**
- * Extrait un instantané complet d'un spot à n'importe quel timestamp `targetMs`
- * (temps réel `isRealtime = true` ou n'importe quelle heure du slider temporel J..J+7 !),
- * en appliquant le multiplicateur bathymétrique réel du Gouf de Capbreton.
+ * Extrait un instantané complet d'un spot à n'importe quel timestamp `targetMs`,
+ * incluant la réfraction angulaire/périodique du Gouf et le cumul pluviométrique 24h/48h.
  */
 export function getSpotSnapshotAt(spot, spotTelemetry, targetMs = Date.now(), isRealtime = true) {
   if (!spotTelemetry?.marine || !spotTelemetry?.weather) return null;
@@ -213,7 +221,6 @@ export function getSpotSnapshotAt(spot, spotTelemetry, targetMs = Date.now(), is
   const hTimes = marine.hourly?.time || [];
   const parsedHTimes = hTimes.map(parseParisLocalISO);
 
-  // Trouve l'index horaire le plus proche de targetMs
   let hIdx = 0;
   let bestDiff = Infinity;
   for (let i = 0; i < parsedHTimes.length; i++) {
@@ -224,7 +231,6 @@ export function getSpotSnapshotAt(spot, spotTelemetry, targetMs = Date.now(), is
     }
   }
 
-  // Même recherche côté météo (au cas où les longueurs diffèrent)
   const wTimes = weather.hourly?.time || [];
   let wIdx = Math.min(hIdx, Math.max(0, wTimes.length - 1));
   if (wTimes.length) {
@@ -236,6 +242,16 @@ export function getSpotSnapshotAt(spot, spotTelemetry, targetMs = Date.now(), is
         wIdx = i;
       }
     }
+  }
+
+  // Cumul glissant exact de pluie sur les 24h et 48h précédant targetMs (pour alerte panache fluvial)
+  const precipArr = weather.hourly?.precipitation || [];
+  let rain24hMm = 0;
+  let rain48hMm = 0;
+  for (let k = Math.max(0, wIdx - 47); k <= wIdx; k++) {
+    const p = Number(precipArr[k] || 0);
+    rain48hMm += p;
+    if (k > wIdx - 24) rain24hMm += p;
   }
 
   const useCurrent = isRealtime && Math.abs(targetMs - Date.now()) < 35 * 60_000;
@@ -291,15 +307,17 @@ export function getSpotSnapshotAt(spot, spotTelemetry, targetMs = Date.now(), is
     ? (marine.current?.ocean_current_direction ?? marine.hourly?.ocean_current_direction?.[hIdx] ?? 0)
     : (marine.hourly?.ocean_current_direction?.[hIdx] ?? 0);
 
-  // Effet bathymétrique réel du Gouf de Capbreton modulé par la période (plus la période est longue, plus la réfraction du Gouf est marquée)
+  // Effet bathymétrique du Gouf modulé par la période ET l'alignement axial (axe du canyon ~278° Ouest-Nord-Ouest)
   const baseGoufMult = spot.goufInfluence?.swellMultiplier ?? 1.0;
-  const periodFactor = Math.min(1.15, Math.max(0.85, (primaryPeriod - 8) / 6));
-  const effectiveGoufMult = 1 + (baseGoufMult - 1) * periodFactor;
+  const periodFactor = Math.min(1.15, Math.max(0.8, (primaryPeriod - 8) / 6));
+  const canyonAxisDelta = Math.abs(waveDir - 282);
+  const angleFactor = canyonAxisDelta <= 22 ? 1.04 : canyonAxisDelta <= 38 ? 0.94 : 0.8;
+  const effectiveGoufMult = 1 + (baseGoufMult - 1) * periodFactor * angleFactor;
+
   const spotWaveHeightM = +(Math.max(0.15, rawWaveH * effectiveGoufMult)).toFixed(2);
   const spotFaceMinM = +(spotWaveHeightM * 0.85).toFixed(1);
   const spotFaceMaxM = +(spotWaveHeightM * 1.25).toFixed(1);
 
-  // Météo AROME
   const windSpeedKmh = useCurrent
     ? (weather.current?.wind_speed_10m ?? weather.hourly?.wind_speed_10m?.[wIdx] ?? 0)
     : (weather.hourly?.wind_speed_10m?.[wIdx] ?? 0);
@@ -335,7 +353,6 @@ export function getSpotSnapshotAt(spot, spotTelemetry, targetMs = Date.now(), is
     ? (weather.current?.precipitation ?? weather.hourly?.precipitation?.[wIdx] ?? 0)
     : (weather.hourly?.precipitation?.[wIdx] ?? 0);
 
-  // Lever / coucher du soleil du jour ciblé
   let sunriseMs = null;
   let sunsetMs = null;
   const dailyTimes = weather.daily?.time || [];
@@ -350,11 +367,9 @@ export function getSpotSnapshotAt(spot, spotTelemetry, targetMs = Date.now(), is
   const isSurfableLight =
     firstLightMs && sunsetMs ? targetMs >= firstLightMs && targetMs <= sunsetMs + 10 * 60_000 : Boolean(isDay);
 
-  // Marée exacte au spot
   const phaseShiftMin = getSpotTidePhaseShiftMin(spot);
   const tide = getTideStateAt(hTimes, marine.hourly?.sea_level_height_msl || [], targetMs, phaseShiftMin);
 
-  // Énergie surf en kJ (au pic après réfraction du Gouf)
   const offshoreEnergyKj = computeSurfEnergyKj(rawSwellH || rawWaveH, primaryPeriod);
   const spotEnergyKj = computeSurfEnergyKj(spotWaveHeightM, primaryPeriod);
 
@@ -397,6 +412,8 @@ export function getSpotSnapshotAt(spot, spotTelemetry, targetMs = Date.now(), is
     uvIndex: +Number(uvIndex).toFixed(1),
     visibilityKm,
     precipMm: +Number(precipMm).toFixed(1),
+    rain24hMm: +rain24hMm.toFixed(1),
+    rain48hMm: +rain48hMm.toFixed(1),
     isDay: Boolean(isDay),
     isSurfableLight,
     sunriseMs,

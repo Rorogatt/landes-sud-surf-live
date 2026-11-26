@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="108" fill="#0d171f"/>
+  <!-- Courbes bathymétriques du Gouf -->
+  <path d="M56 320 C160 315, 250 280, 368 256 C250 232, 160 197, 56 192" fill="none" stroke="#3ba5c9" stroke-width="14" stroke-dasharray="16 12" opacity="0.55"/>
+  <!-- Vague tubulaire stylisée Atlantique -->
+  <path d="M88 344 C156 344, 188 206, 286 206 C348 206, 378 252, 350 292 C328 322, 284 316, 276 286 C270 264, 290 248, 310 252" fill="none" stroke="#edebe6" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Ligne dunaire & Pinède -->
+  <path d="M88 394 Q256 364 424 394" fill="none" stroke="#3ca38b" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="404" cy="146" r="24" fill="#de9e36"/>
+</svg>

@@ -1,26 +1,24 @@
 /* ==========================================================================
-   SUD LANDES SURF LIVE — Système de Design Éditorial & Océanographique
-   Esthétique : Charte Marine SHOM & Journal Côtier Atlantique (Zéro artifice)
+   SUD LANDES SURF LIVE v2 — Système de Design Éditorial & Océanographique
+   Optimisé Desktop 1-Ligne + Mobile "Parking Check" (<960px) + Accessibilité
    ========================================================================== */
 
 :root {
-  /* Thème par défaut : Encre Atlantique & Pin des Landes */
   --bg-page: hsl(204, 30%, 7.5%);
   --bg-surface: hsl(204, 25%, 10.8%);
   --bg-elevated: hsl(203, 22%, 14.2%);
   --bg-subtle: hsl(203, 19%, 17.8%);
-  --bg-glass: hsla(204, 28%, 9%, 0.86);
+  --bg-glass: hsla(204, 28%, 9%, 0.9);
 
   --text-primary: hsl(40, 24%, 93%);
-  --text-secondary: hsl(204, 15%, 73%);
-  --text-muted: hsl(204, 12%, 54%);
+  --text-secondary: hsl(204, 15%, 74%);
+  --text-muted: hsl(204, 12%, 56%);
 
   --border-subtle: hsla(200, 20%, 82%, 0.09);
-  --border-strong: hsla(200, 20%, 85%, 0.18);
+  --border-strong: hsla(200, 20%, 85%, 0.2);
 
-  /* Accents maritimes fonctionnels (aucun violet/néon) */
   --accent-sea: hsl(165, 46%, 44%);
-  --accent-sea-soft: hsla(165, 46%, 44%, 0.14);
+  --accent-sea-soft: hsla(165, 46%, 44%, 0.15);
   --accent-amber: hsl(36, 76%, 55%);
   --accent-amber-soft: hsla(36, 76%, 55%, 0.15);
   --accent-coral: hsl(12, 68%, 55%);
@@ -28,7 +26,6 @@
   --accent-sky: hsl(199, 64%, 56%);
   --accent-sky-soft: hsla(199, 64%, 56%, 0.14);
 
-  /* Couleurs Carte Océanographique */
   --map-ocean-deep: hsl(205, 38%, 9%);
   --map-ocean-mid: hsl(202, 34%, 13%);
   --map-ocean-shoal: hsl(196, 32%, 17%);
@@ -49,28 +46,27 @@
 }
 
 [data-theme='light'] {
-  /* Thème Clair : Dune Blonde d'Hossegor & Papier Hydrographique */
   --bg-page: hsl(40, 28%, 94.5%);
   --bg-surface: hsl(40, 33%, 98%);
   --bg-elevated: hsl(38, 22%, 91.5%);
   --bg-subtle: hsl(38, 18%, 87.5%);
-  --bg-glass: hsla(40, 30%, 97%, 0.9);
+  --bg-glass: hsla(40, 30%, 97%, 0.92);
 
   --text-primary: hsl(206, 34%, 13%);
-  --text-secondary: hsl(206, 20%, 32%);
-  --text-muted: hsl(206, 14%, 47%);
+  --text-secondary: hsl(206, 20%, 31%);
+  --text-muted: hsl(206, 14%, 45%);
 
   --border-subtle: hsla(206, 28%, 18%, 0.1);
-  --border-strong: hsla(206, 28%, 18%, 0.2);
+  --border-strong: hsla(206, 28%, 18%, 0.22);
 
-  --accent-sea: hsl(166, 56%, 30%);
-  --accent-sea-soft: hsla(166, 56%, 30%, 0.12);
-  --accent-amber: hsl(33, 84%, 40%);
-  --accent-amber-soft: hsla(33, 84%, 40%, 0.13);
+  --accent-sea: hsl(166, 56%, 29%);
+  --accent-sea-soft: hsla(166, 56%, 29%, 0.12);
+  --accent-amber: hsl(33, 84%, 39%);
+  --accent-amber-soft: hsla(33, 84%, 39%, 0.13);
   --accent-coral: hsl(11, 72%, 44%);
   --accent-coral-soft: hsla(11, 72%, 44%, 0.12);
-  --accent-sky: hsl(201, 72%, 38%);
-  --accent-sky-soft: hsla(201, 72%, 38%, 0.12);
+  --accent-sky: hsl(201, 72%, 37%);
+  --accent-sky-soft: hsla(201, 72%, 37%, 0.12);
 
   --map-ocean-deep: hsl(202, 42%, 80%);
   --map-ocean-mid: hsl(199, 44%, 85%);
@@ -104,15 +100,31 @@ body {
   position: relative;
 }
 
-/* Grain papier marin subtil pour la profondeur matérielle des surfaces */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.024;
+  opacity: 0.022;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Accessibilité clavier nette partout */
+:focus-visible {
+  outline: 2px solid var(--accent-sea);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }
 
 button,
@@ -137,7 +149,7 @@ a:hover {
 }
 
 /* ==========================================================================
-   1. BANDEAU TÉLÉMÉTRIE CÔTIÈRE & EN-TÊTE
+   1. BANDEAU TÉLÉMÉTRIE COMPACT (1 SEULE LIGNE À 1440PX)
    ========================================================================== */
 
 .topbar-telemetry {
@@ -151,52 +163,68 @@ a:hover {
 }
 
 .topbar-inner {
-  max-width: 1640px;
+  max-width: 1680px;
   margin: 0 auto;
-  padding: 0.65rem 1.25rem;
+  padding: 0.48rem 1.15rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
 }
 
 .brand-block {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
+  gap: 0.6rem;
+  white-space: nowrap;
 }
 
 .brand-title {
   margin: 0;
   font-family: var(--font-serif);
   font-weight: 400;
-  font-size: 1.65rem;
+  font-size: 1.52rem;
   letter-spacing: -0.01em;
-  line-height: 1.05;
+  line-height: 1;
 }
 
 .brand-subtitle {
   font-family: var(--font-mono);
-  font-size: 0.73rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
+}
+
+.offline-pill {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 0.15rem 0.48rem;
+  border-radius: 4px;
+  background: var(--accent-amber-soft);
+  color: var(--accent-amber);
 }
 
 .coastal-pulse-strip {
   display: flex;
   align-items: center;
-  gap: 1.15rem;
-  flex-wrap: wrap;
+  gap: 0.9rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.coastal-pulse-strip::-webkit-scrollbar {
+  display: none;
 }
 
 .pulse-metric {
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
-  padding-left: 0.9rem;
+  padding-left: 0.8rem;
   border-left: 1px solid var(--border-subtle);
+  white-space: nowrap;
 }
 
 .pulse-metric:first-child {
@@ -205,24 +233,30 @@ a:hover {
 }
 
 .pulse-label {
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
 }
 
 .pulse-value {
   font-family: var(--font-mono);
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
 }
 
 .topbar-controls {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.38rem;
+  flex-shrink: 0;
+}
+
+.level-select {
+  font-weight: 600;
+  background: var(--bg-elevated) !important;
+  border-color: var(--border-strong) !important;
 }
 
 .btn-ghost,
@@ -231,16 +265,18 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  padding: 0.4rem 0.72rem;
-  font-size: 0.8rem;
+  padding: 0.38rem 0.68rem;
+  min-height: 34px;
+  font-size: 0.79rem;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .btn-ghost:hover,
@@ -257,41 +293,39 @@ a:hover {
   border-color: transparent;
 }
 
-.btn-primary:hover {
-  filter: brightness(1.07);
-}
-
 /* ==========================================================================
-   2. BARRE DE NAVIGATION DES MODES & TIME-TRAVEL SCRUBBER (168H)
+   2. SOUS-BARRE MODES & TIME-SCRUBBER (1 SEULE LIGNE DESKTOP)
    ========================================================================== */
 
 .subbar-nav {
-  max-width: 1640px;
+  max-width: 1680px;
   margin: 0 auto;
-  padding: 0.65rem 1.25rem;
+  padding: 0.45rem 1.15rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .mode-tabs {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  flex-wrap: wrap;
+  gap: 0.25rem;
+  flex-wrap: nowrap;
 }
 
 .mode-tab {
   background: transparent;
   border: 1px solid transparent;
-  padding: 0.46rem 0.88rem;
+  padding: 0.4rem 0.72rem;
+  min-height: 36px;
   border-radius: var(--radius-sm);
-  font-size: 0.84rem;
+  font-size: 0.81rem;
   font-weight: 600;
   color: var(--text-secondary);
+  white-space: nowrap;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -309,37 +343,38 @@ a:hover {
 
 .mode-tab-count {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  padding: 0.08rem 0.38rem;
+  font-size: 0.7rem;
+  padding: 0.06rem 0.35rem;
   border-radius: 4px;
   background: var(--bg-subtle);
   color: var(--text-muted);
-  margin-left: 0.25rem;
+  margin-left: 0.2rem;
 }
 
-/* Scrubber Temporel (Direct Live vs Prévision Horaire 8 Jours) */
 .time-scrubber-bar {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  flex-wrap: wrap;
+  gap: 0.45rem;
+  flex-wrap: nowrap;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 0.35rem 0.7rem;
+  padding: 0.28rem 0.58rem;
 }
 
 .live-indicator-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.38rem;
-  padding: 0.26rem 0.6rem;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  min-height: 30px;
   border-radius: 5px;
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -358,16 +393,17 @@ a:hover {
 
 .time-quick-presets {
   display: flex;
-  gap: 0.3rem;
-  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 
 .preset-btn {
   background: transparent;
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
-  padding: 0.22rem 0.5rem;
-  font-size: 0.74rem;
+  padding: 0.24rem 0.46rem;
+  min-height: 30px;
+  font-size: 0.72rem;
+  white-space: nowrap;
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -382,39 +418,131 @@ a:hover {
 .time-slider-wrap {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.45rem;
 }
 
 .time-slider-input {
-  width: 150px;
+  width: 118px;
+  height: 24px;
   accent-color: var(--accent-amber);
   cursor: pointer;
 }
 
 .time-readout-label {
   font-family: var(--font-mono);
-  font-size: 0.77rem;
+  font-size: 0.74rem;
   color: var(--accent-amber);
-  min-width: 148px;
+  white-space: nowrap;
 }
 
 /* ==========================================================================
-   3. CONTENEUR PRINCIPAL & VUE RADAR (CARTE + LISTE 19 SPOTS + INSPECTEUR)
+   3. BRIEFING "COACH SURF LOCAL" & PODIUM TOP 3 IMMÉDIAT
    ========================================================================== */
 
 .app-main {
-  max-width: 1640px;
+  max-width: 1680px;
   margin: 0 auto;
-  padding: 1.1rem 1.25rem 3rem;
+  padding: 0.9rem 1.15rem 3rem;
+}
+
+.coach-briefing-banner {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.coach-text-col {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.coach-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 0.69rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-sea);
+}
+
+.coach-kicker .spot-tag {
+  white-space: normal;
+  max-width: 100%;
+  line-height: 1.3;
+}
+
+.coach-headline {
+  margin: 0.18rem 0 0.15rem;
+  font-size: 0.98rem;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.coach-subline {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.podium-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.podium-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.42rem 0.68rem;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.podium-chip:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   4. FILTRES & WORKSPACE 3 COLONNES (AVEC RÉPONSE MOBILE CHIRURGICALE)
+   ========================================================================== */
+
+.mobile-radar-switcher {
+  display: none;
+}
+
+.mobile-drawer-topbar {
+  display: none;
+}
+
+.mobile-bottom-nav {
+  display: none;
 }
 
 .filter-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.85rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: 0.9rem;
 }
 
 .filter-group {
@@ -429,37 +557,35 @@ a:hover {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  padding: 0.42rem 0.72rem;
-  font-size: 0.82rem;
+  padding: 0.4rem 0.68rem;
+  min-height: 36px;
+  font-size: 0.8rem;
   color: var(--text-primary);
-  outline: none;
 }
 
-.search-input:focus,
-.select-input:focus {
-  border-color: var(--accent-sea);
+.search-input {
+  min-width: 268px;
 }
 
-/* Layout 3 colonnes fluides sur grand écran : Carte Côtière | Grille/Liste des 19 Spots | Inspecteur Spot Live */
 .radar-workspace {
   display: grid;
-  grid-template-columns: 390px minmax(360px, 1fr) 470px;
-  gap: 1.1rem;
+  grid-template-columns: 400px minmax(360px, 1fr) 480px;
+  gap: 1rem;
   align-items: start;
 }
 
 @media (max-width: 1380px) {
+  .topbar-inner,
+  .subbar-nav {
+    flex-wrap: wrap;
+  }
   .radar-workspace {
-    grid-template-columns: 350px 1fr;
+    grid-template-columns: 360px 1fr;
   }
   .spot-inspector-panel {
     grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 920px) {
-  .radar-workspace {
-    grid-template-columns: 1fr;
+    position: static !important;
+    max-height: none !important;
   }
 }
 
@@ -472,28 +598,27 @@ a:hover {
 }
 
 .panel-header {
-  padding: 0.85rem 1rem;
+  padding: 0.75rem 0.95rem;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
 .panel-title {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
 }
 
 /* ==========================================================================
-   4. CARTE OCÉANOGRAPHIQUE SVG & GOUF DE CAPBRETON
+   5. CARTE OCÉANOGRAPHIQUE SVG (ZÉRO COLLISION / ZÉRO ROGNAGE)
    ========================================================================== */
 
 .coast-map-sticky {
   position: sticky;
-  top: 66px;
+  top: 58px;
 }
 
 .coast-map-frame {
@@ -527,7 +652,7 @@ a:hover {
 
 .map-jetty-line {
   stroke: var(--text-secondary);
-  stroke-width: 2.6;
+  stroke-width: 2.5;
   stroke-linecap: round;
 }
 
@@ -542,7 +667,7 @@ a:hover {
   fill: var(--accent-sky);
   font-family: var(--font-mono);
   font-size: 8.5px;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .gouf-ray-amp {
@@ -565,13 +690,13 @@ a:hover {
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
 }
 
 .gouf-canyon-sub {
   fill: var(--text-muted);
   font-family: var(--font-sans);
-  font-size: 8.5px;
+  font-size: 8.4px;
 }
 
 .map-geo-caption {
@@ -587,7 +712,7 @@ a:hover {
 }
 
 [data-theme='light'] .compass-ring {
-  fill: hsla(40, 33%, 98%, 0.78);
+  fill: hsla(40, 33%, 98%, 0.82);
 }
 
 .compass-cardinal {
@@ -599,7 +724,7 @@ a:hover {
 
 .compass-swell-vec {
   stroke: var(--accent-sky);
-  stroke-width: 2.4;
+  stroke-width: 2.3;
 }
 
 .compass-swell-head {
@@ -618,30 +743,28 @@ a:hover {
 .compass-readout-swell {
   fill: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 8.8px;
+  font-size: 8.6px;
   font-weight: 600;
 }
 
 .compass-readout-wind {
   fill: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 8.4px;
+  font-size: 8.2px;
 }
 
 .map-spot-node {
   cursor: pointer;
-  outline: none;
 }
 
 .map-leader-line {
   stroke: var(--border-strong);
-  stroke-width: 0.8;
+  stroke-width: 0.85;
 }
 
 .map-pin-dot {
   stroke: var(--bg-page);
   stroke-width: 1.5;
-  transition: r 150ms ease;
 }
 
 .map-pin-halo {
@@ -664,9 +787,8 @@ a:hover {
 }
 
 .map-spot-label {
-  font-size: 9.8px;
+  font-size: 9.6px;
   fill: var(--text-secondary);
-  transition: fill 120ms ease;
 }
 
 .map-spot-node:hover .map-spot-label,
@@ -677,7 +799,7 @@ a:hover {
 
 .map-spot-metrics {
   font-family: var(--font-mono);
-  font-size: 8.8px;
+  font-size: 8.6px;
   fill: var(--text-muted);
 }
 
@@ -687,20 +809,19 @@ a:hover {
 }
 
 .map-legend-footer {
-  padding: 0.65rem 0.9rem;
+  padding: 0.6rem 0.9rem;
   border-top: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  flex-wrap: wrap;
-  font-size: 0.74rem;
+  font-size: 0.73rem;
   color: var(--text-muted);
 }
 
 .legend-items {
   display: flex;
-  gap: 0.7rem;
+  gap: 0.65rem;
   align-items: center;
 }
 
@@ -717,25 +838,25 @@ a:hover {
 }
 
 /* ==========================================================================
-   5. LISTE DES 19 SPOTS (CARTES COMPACTES HAUTE DENSITÉ D'INFORMATION)
+   6. LISTE DES 19 SPOTS & INSPECTEUR DÉTAILLÉ
    ========================================================================== */
 
 .spots-list-column {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.6rem;
 }
 
 .spot-row-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 0.85rem 1rem;
+  padding: 0.8rem 0.95rem;
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
   display: grid;
-  grid-template-columns: 54px 1fr auto;
-  gap: 0.85rem;
+  grid-template-columns: 52px 1fr auto;
+  gap: 0.8rem;
   align-items: center;
 }
 
@@ -750,8 +871,8 @@ a:hover {
 }
 
 .score-medallion {
-  width: 52px;
-  height: 52px;
+  width: 50px;
+  height: 50px;
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
@@ -762,14 +883,14 @@ a:hover {
 }
 
 .score-medallion .score-num {
-  font-size: 1.12rem;
+  font-size: 1.1rem;
   font-weight: 700;
   line-height: 1;
 }
 
 .score-medallion .score-max {
-  font-size: 0.64rem;
-  opacity: 0.72;
+  font-size: 0.63rem;
+  opacity: 0.75;
   margin-top: 2px;
 }
 
@@ -801,44 +922,44 @@ a:hover {
 .spot-row-top {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: 0.45rem;
   flex-wrap: wrap;
 }
 
 .spot-row-title {
   margin: 0;
-  font-size: 0.98rem;
+  font-size: 0.95rem;
   font-weight: 650;
-  color: var(--text-primary);
 }
 
 .spot-row-commune {
-  font-size: 0.74rem;
+  font-size: 0.73rem;
   color: var(--text-muted);
 }
 
 .spot-row-metrics {
-  margin-top: 0.35rem;
+  margin-top: 0.3rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
   flex-wrap: wrap;
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: var(--text-secondary);
 }
 
 .spot-tag {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.14rem 0.46rem;
+  gap: 0.24rem;
+  padding: 0.13rem 0.45rem;
   border-radius: 4px;
   font-family: var(--font-sans);
-  font-size: 0.72rem;
+  font-size: 0.71rem;
   font-weight: 600;
   background: var(--bg-subtle);
   color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .spot-tag.tag-cam {
@@ -851,37 +972,39 @@ a:hover {
   color: var(--accent-amber);
 }
 
+.spot-tag.tag-alert {
+  background: var(--accent-coral-soft);
+  color: var(--accent-coral);
+}
+
 .spot-row-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.3rem;
+  gap: 0.28rem;
   text-align: right;
 }
 
 .crowd-pill {
-  font-size: 0.73rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.18rem 0.52rem;
+  padding: 0.16rem 0.48rem;
   border-radius: 4px;
   background: var(--bg-subtle);
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
-/* ==========================================================================
-   6. INSPECTEUR DE SPOT COMPLET (WEBCAM LIVE + TÉLÉMÉTRIE + MARÉE + GUIDE)
-   ========================================================================== */
-
+/* Inspecteur Desktop */
 .spot-inspector-panel {
   position: sticky;
-  top: 66px;
-  max-height: calc(100vh - 84px);
+  top: 58px;
+  max-height: calc(100vh - 74px);
   overflow-y: auto;
 }
 
 .inspector-hero {
-  padding: 1rem 1.1rem 0.85rem;
+  padding: 0.95rem 1.05rem 0.8rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -889,31 +1012,31 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .inspector-spot-name {
-  margin: 0.25rem 0 0.2rem;
+  margin: 0.22rem 0 0.2rem;
   font-family: var(--font-serif);
-  font-size: 1.75rem;
+  font-size: 1.7rem;
   font-weight: 400;
-  line-height: 1.1;
+  line-height: 1.08;
 }
 
 .inspector-verdict-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
-  margin-top: 0.55rem;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
   flex-wrap: wrap;
 }
 
-/* Lecteur Webcam Universel (HLS .m3u8 / Iframe / Snapshot Live HD / Fallback) */
+/* Webcam Stage + Loupe Zoom + Overlay Nuit + Bouton Play Éco */
 .webcam-stage {
   background: #05090d;
   position: relative;
@@ -929,6 +1052,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: none;
 }
 
 .webcam-viewport video,
@@ -943,33 +1067,107 @@ a:hover {
 
 .webcam-overlay-top {
   position: absolute;
-  top: 0.6rem;
-  left: 0.65rem;
-  right: 0.65rem;
+  top: 0.55rem;
+  left: 0.6rem;
+  right: 0.6rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.45rem;
   pointer-events: none;
-  z-index: 4;
+  z-index: 6;
 }
 
 .cam-badge-live {
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.52rem;
+  gap: 0.32rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  background: rgba(8, 15, 22, 0.82);
+  background: rgba(8, 15, 22, 0.84);
   color: #f3f1ec;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 0.69rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  white-space: nowrap;
+}
+
+.webcam-night-pill {
+  position: absolute;
+  bottom: 0.55rem;
+  left: 0.6rem;
+  z-index: 6;
+  pointer-events: none;
+  padding: 0.2rem 0.52rem;
+  border-radius: 4px;
+  background: rgba(10, 18, 28, 0.86);
+  color: #e4c07a;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  border: 1px solid rgba(228, 192, 122, 0.28);
+}
+
+.webcam-zoom-controls {
+  position: absolute;
+  bottom: 0.55rem;
+  right: 0.6rem;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: 5px;
+  background: rgba(8, 15, 22, 0.86);
+  color: #edebe6;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.zoom-step-btn {
+  background: transparent;
+  border: 0;
+  color: #b7c4cf;
+  font-family: var(--font-mono);
+  font-size: 0.69rem;
+  padding: 0.18rem 0.38rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.zoom-step-btn.is-active {
+  background: var(--accent-sea);
+  color: #fff;
+  font-weight: 700;
+}
+
+.wall-play-overlay-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(11, 22, 31, 0.88);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+
+.wall-play-overlay-btn:hover {
+  background: var(--accent-sea);
+  border-color: transparent;
 }
 
 .cam-switcher-bar {
-  padding: 0.5rem 0.85rem;
+  padding: 0.45rem 0.8rem;
   background: var(--bg-elevated);
   display: flex;
   align-items: center;
@@ -980,13 +1178,14 @@ a:hover {
 
 .cam-angle-tabs {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.32rem;
   flex-wrap: wrap;
 }
 
 .cam-angle-btn {
-  padding: 0.22rem 0.55rem;
-  font-size: 0.74rem;
+  padding: 0.22rem 0.52rem;
+  min-height: 28px;
+  font-size: 0.73rem;
   border-radius: 4px;
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
@@ -1001,24 +1200,12 @@ a:hover {
 }
 
 .webcam-fallback-box {
-  padding: 1.4rem;
+  padding: 1.2rem;
   text-align: center;
   color: #d5dde3;
-  max-width: 380px;
+  max-width: 360px;
 }
 
-.webcam-fallback-box h4 {
-  margin: 0 0 0.35rem;
-  font-size: 0.96rem;
-}
-
-.webcam-fallback-box p {
-  margin: 0 0 0.85rem;
-  font-size: 0.78rem;
-  color: #93a3b1;
-}
-
-/* Grille de Télémétrie dans l'Inspecteur (Pas d'imbrication excessive : séparateurs nets) */
 .telemetry-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1026,7 +1213,7 @@ a:hover {
 }
 
 .telemetry-cell {
-  padding: 0.8rem 1rem;
+  padding: 0.75rem 0.95rem;
   border-right: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -1040,28 +1227,43 @@ a:hover {
 }
 
 .tel-label {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
 }
 
 .tel-main {
-  margin-top: 0.2rem;
+  margin-top: 0.18rem;
   font-family: var(--font-mono);
-  font-size: 1.08rem;
+  font-size: 1.02rem;
   font-weight: 700;
-  color: var(--text-primary);
 }
 
 .tel-sub {
-  margin-top: 0.15rem;
-  font-size: 0.75rem;
+  margin-top: 0.14rem;
+  font-size: 0.74rem;
   color: var(--text-secondary);
 }
 
+.safety-vigie-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}
+
+.vigie-box {
+  padding: 0.65rem 0.95rem;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.vigie-box:last-child {
+  border-right: none;
+}
+
 .inspector-section {
-  padding: 0.95rem 1.05rem;
+  padding: 0.9rem 1rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -1070,36 +1272,38 @@ a:hover {
 }
 
 .section-heading {
-  margin: 0 0 0.55rem;
-  font-size: 0.78rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .extrema-pills {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.4rem;
-  margin-top: 0.55rem;
+  gap: 0.38rem;
+  margin-top: 0.5rem;
 }
 
 .extremum-item {
   background: var(--bg-elevated);
-  padding: 0.38rem 0.45rem;
+  padding: 0.35rem 0.4rem;
   border-radius: var(--radius-sm);
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 0.73rem;
+  font-size: 0.72rem;
 }
 
 .crowd-vote-strip {
   display: flex;
   gap: 0.35rem;
-  margin-top: 0.55rem;
+  margin-top: 0.45rem;
   flex-wrap: wrap;
 }
 
@@ -1107,8 +1311,8 @@ a:hover {
 .local-guide-list {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  font-size: 0.81rem;
+  gap: 0.42rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
 }
 
@@ -1116,7 +1320,7 @@ a:hover {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
-  padding-bottom: 0.38rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px dashed var(--border-subtle);
 }
 
@@ -1126,44 +1330,43 @@ a:hover {
 }
 
 .hazard-list {
-  margin: 0.4rem 0 0;
+  margin: 0.35rem 0 0;
   padding-left: 1.1rem;
-  font-size: 0.79rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
 }
 
-.hazard-list li {
-  margin-bottom: 0.25rem;
-}
-
-/* Prévisions horaires compactes 24h dans l'inspecteur */
 .hourly-strip-table {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.74rem;
 }
 
 .hourly-strip-table th {
   text-align: left;
   font-weight: 600;
   color: var(--text-muted);
-  padding: 0.35rem 0.3rem;
+  padding: 0.32rem 0.28rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .hourly-strip-table td {
-  padding: 0.36rem 0.3rem;
+  padding: 0.36rem 0.28rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.hourly-strip-table tr:hover {
-  background: var(--bg-elevated);
+.hourly-strip-table tbody tr {
   cursor: pointer;
 }
 
+.hourly-strip-table tbody tr:hover,
+.hourly-strip-table tbody tr:focus-visible {
+  background: var(--bg-elevated);
+}
+
 /* ==========================================================================
-   7. VUE MUR VIDÉO LIVE MULTI-WEBCAMS ("SURVEILLANCE CÔTE SUD")
+   7. MUR VIDÉO, CRÉNEAUX 48H, COMPARATEUR & BOUÉES
    ========================================================================== */
 
 .wall-toolbar {
@@ -1178,7 +1381,7 @@ a:hover {
 .webcam-wall-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(390px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
 }
 
 .webcam-wall-grid.grid-2x2 {
@@ -1195,14 +1398,6 @@ a:hover {
   }
 }
 
-@media (max-width: 720px) {
-  .webcam-wall-grid,
-  .webcam-wall-grid.grid-2x2,
-  .webcam-wall-grid.grid-3x3 {
-    grid-template-columns: 1fr;
-  }
-}
-
 .wall-cam-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -1213,7 +1408,7 @@ a:hover {
 }
 
 .wall-cam-footer {
-  padding: 0.68rem 0.85rem;
+  padding: 0.65rem 0.85rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1221,13 +1416,9 @@ a:hover {
   border-top: 1px solid var(--border-subtle);
 }
 
-/* ==========================================================================
-   8. VUE MEILLEURS CRÉNEAUX 48H & COMPARATEUR FACE-À-FACE
-   ========================================================================== */
-
 .sessions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(315px, 1fr));
   gap: 0.9rem;
   margin-bottom: 1.8rem;
 }
@@ -1236,7 +1427,7 @@ a:hover {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 1rem;
+  padding: 0.95rem;
   cursor: pointer;
   transition: border-color var(--transition-fast), transform var(--transition-fast);
 }
@@ -1256,12 +1447,12 @@ a:hover {
 .comparator-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.84rem;
+  font-size: 0.83rem;
 }
 
 .comparator-table th,
 .comparator-table td {
-  padding: 0.75rem 1rem;
+  padding: 0.72rem 0.95rem;
   border-bottom: 1px solid var(--border-subtle);
   border-right: 1px solid var(--border-subtle);
   text-align: left;
@@ -1272,17 +1463,13 @@ a:hover {
 .comparator-table td:first-child {
   font-weight: 600;
   color: var(--text-muted);
-  width: 200px;
+  width: 195px;
   background: var(--bg-elevated);
 }
 
-/* ==========================================================================
-   9. VUE BOUÉES HOULOGRAPHES & ATLAS DU GOUF DE CAPBRETON
-   ========================================================================== */
-
 .buoys-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(305px, 1fr));
   gap: 1rem;
   margin-bottom: 1.6rem;
 }
@@ -1296,7 +1483,7 @@ a:hover {
 
 .gouf-zones-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
 }
@@ -1306,6 +1493,229 @@ a:hover {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 1rem;
+}
+
+.toast-banner {
+  position: fixed;
+  bottom: 74px;
+  right: 20px;
+  z-index: 200;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-sea);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-soft);
+}
+
+.site-footer {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 1.2rem 1.15rem 2.4rem;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   8. ERGONOMIE MOBILE "PARKING CHECK" (< 960PX) — ZÉRO PIÈGE STICKY !
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  body {
+    padding-bottom: 68px; /* Espace pour la Bottom Nav au pouce */
+  }
+
+  /* Header mobile non-envahissant : topbar non-sticky ou compacte <= 54px */
+  .topbar-telemetry {
+    position: static;
+  }
+
+  .topbar-inner {
+    padding: 0.55rem 0.85rem;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .coastal-pulse-strip {
+    order: 3;
+    width: 100%;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .subbar-nav {
+    padding: 0.45rem 0.85rem;
+  }
+
+  .mode-tabs {
+    display: none; /* Remplacé par la Bottom Tab Bar fixe au pouce ! */
+  }
+
+  .time-scrubber-bar {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .app-main {
+    padding: 0.7rem 0.8rem 2rem;
+  }
+
+  /* Cibles tactiles confortables >= 42px sur mobile */
+  .btn-ghost,
+  .btn-chip,
+  .btn-primary,
+  .search-input,
+  .select-input,
+  .preset-btn,
+  .live-indicator-btn {
+    min-height: 42px;
+  }
+
+  .search-input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .radar-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  /* Sélecteur Liste / Carte bien visible en haut sur mobile */
+  .mobile-radar-switcher {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+    background: var(--bg-surface);
+    padding: 0.3rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    margin-bottom: 0.75rem;
+  }
+
+  .mobile-seg-btn {
+    min-height: 42px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.84rem;
+    cursor: pointer;
+  }
+
+  .mobile-seg-btn.is-active {
+    background: var(--accent-sea);
+    color: #fff;
+  }
+
+  /* Désactive TOTALEMENT le sticky de la carte SVG sur mobile ! */
+  .coast-map-sticky {
+    position: static !important;
+    top: auto !important;
+  }
+
+  .coast-map-sticky.mobile-map-collapsed {
+    display: none !important;
+  }
+
+  .coach-text-col {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+
+  /* Tiroir Plein Écran fluide pour l'Inspecteur sur Mobile */
+  .spot-inspector-panel {
+    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 165;
+    height: 100%;
+    max-height: none !important;
+    padding-bottom: 2.5rem;
+    border-radius: 0;
+    border: 0;
+    overflow-y: auto;
+    background: var(--bg-page);
+  }
+
+  .spot-inspector-panel.is-mobile-open {
+    display: block;
+  }
+
+  .mobile-drawer-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    background: var(--bg-glass);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .webcam-wall-grid,
+  .webcam-wall-grid.grid-2x2,
+  .webcam-wall-grid.grid-3x3 {
+    grid-template-columns: 1fr;
+  }
+
+  .safety-vigie-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .vigie-box {
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  /* Barre de navigation inférieure fixe au pouce */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 110;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    background: var(--bg-glass);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--border-strong);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .mob-nav-item {
+    min-height: 54px;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .mob-nav-item.is-active {
+    color: var(--accent-sea);
+    box-shadow: inset 0 2px 0 var(--accent-sea);
+  }
 }
 
 .hidden {

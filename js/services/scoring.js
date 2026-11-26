@@ -1,25 +1,48 @@
 /**
- * Moteur Physique de Scoring Surf (/10), Régime de Vent Côtier,
- * Affluence Temps Réel (Europe/Paris), Équipement Néoprène/Quiver
- * et Recherche des Meilleurs Créneaux 48h sur les 19 spots du Sud Landes.
+ * Moteur Physique v2 de Scoring Surf (/10) Personnalisé par Niveau Surfeur :
+ * - Profils : `debutant` | `intermediaire` | `confirme` | `chargeur`
+ * - Angle de houle primaire (`idealSwell.directionsDeg`), bonus *Wedge* / malus clapot de la houle secondaire
+ * - Vraie pénalité de fermeture (*closeouts*) par houle trop longue sur les beachbreaks rectilignes
+ * - Prise en compte des rafales AROME (`windGustsKmh`) et des abris côtiers (Estacade / Digue Tarnos)
+ * - Intégration directe du Risque de Baïnes (1–5) et de la Qualité d'Eau Post-Pluie 48h.
  */
 
 import { getParisDateParts, formatParisTime, formatParisShortDate } from './time.js';
+import { computeBainesRisk, computeWaterQualityAlert, SURFER_LEVELS } from './safetyAndCoach.js';
 
 const CROWD_VOTES_KEY = 'landes_surf_crowd_votes_v1';
 
+// Spots dont la bathymétrie (Gouf / digue / embouchure) tient les très longues périodes (15-18s) sans fermer d'un bloc
+const LONG_PERIOD_HOLD_SPOTS = new Set([
+  'hossegor-la-nord',
+  'hossegor-la-graviere',
+  'hossegor-les-culs-nus',
+  'capbreton-la-piste-vvf',
+  'tarnos-metro-la-digue',
+  'hossegor-la-sud',
+  'capbreton-le-prevent',
+  'capbreton-notre-dame-miramar',
+]);
+
+// Spots lourds / slabs / experts dangereux pour Débutants et exigeants pour Intermédiaires dès que ça pousse
+const HEAVY_EXPERT_SPOTS = new Set([
+  'hossegor-la-graviere',
+  'hossegor-la-nord',
+  'capbreton-la-piste-vvf',
+  'hossegor-les-culs-nus',
+]);
+
 function angleDiffDeg(a, b) {
-  const diff = Math.abs(((a - b) % 360 + 540) % 360 - 180);
-  return diff;
+  return Math.abs((((a - b) % 360) + 540) % 360 - 180);
 }
 
 /**
- * Qualifie précisément le vent par rapport à l'azimut exact de la plage et aux abris locaux
- * (Estacade de Capbreton au Nord, Digue de Tarnos au Sud, Front bâti du Prévent).
+ * Qualifie le vent (moyen + rafales) par rapport à l'azimut de la plage et aux abris locaux.
  */
 export function evaluateWindForSpot(spot, snapshot) {
   const speed = snapshot.windSpeedKmh ?? 0;
   const gusts = snapshot.windGustsKmh ?? speed;
+  const effectiveWind = speed * 0.72 + gusts * 0.28; // Pondère les rafales violentes au take-off
   const dir = snapshot.windDirDeg ?? 0;
   const offshoreIdeal = spot.orientationAndWind.idealOffshoreWindDeg;
   const deltaOffshore = angleDiffDeg(dir, offshoreIdeal);
@@ -44,25 +67,26 @@ export function evaluateWindForSpot(spot, snapshot) {
   }
 
   if (deltaOffshore <= 38) {
-    const score = speed <= 22 ? 9.6 : speed <= 34 ? 8.3 : 6.8;
+    let score = effectiveWind <= 22 ? 9.6 : effectiveWind <= 34 ? 8.1 : 6.1;
+    if (gusts >= 42) score -= 1.1; // Rafales d'Est arrachant la planche au drop
     return {
       regime: 'offshore',
-      label: speed <= 25 ? 'Pur Offshore (creuse et lisse)' : 'Offshore soutenu (embruns)',
+      label: gusts >= 38 ? 'Offshore fort (rafales au drop)' : 'Pur Offshore (creuse et lisse)',
       shortLabel: 'Offshore',
-      tone: 'optimal',
-      score10: score,
+      tone: score >= 7.5 ? 'optimal' : 'good',
+      score10: +Math.max(3.5, score).toFixed(1),
       isSheltered,
-      detail: `Vent ${snapshot.windDirCompass} ${speed} km/h pile de terre (idéal ${spot.orientationAndWind.idealOffshoreWindText}).`,
+      detail: `Vent ${snapshot.windDirCompass} ${speed} km/h (raf. ${gusts} km/h) pile de terre.`,
     };
   }
 
   if (deltaOffshore <= 68) {
-    const score = speed <= 20 ? 8.5 : speed <= 32 ? 7.2 : 5.6;
+    const score = effectiveWind <= 20 ? 8.6 : effectiveWind <= 32 ? 7.0 : 5.1;
     return {
       regime: 'cross-off',
       label: 'Cross-Offshore propre',
       shortLabel: 'Cross-Off',
-      tone: 'optimal',
+      tone: score >= 7.5 ? 'optimal' : 'good',
       score10: score,
       isSheltered,
       detail: `Vent ${snapshot.windDirCompass} ${speed} km/h légèrement de biais terre.`,
@@ -70,7 +94,7 @@ export function evaluateWindForSpot(spot, snapshot) {
   }
 
   if (isSheltered && deltaOffshore <= 125) {
-    const shelterScore = speed <= 24 ? 7.9 : speed <= 38 ? 6.8 : 5.4;
+    const shelterScore = effectiveWind <= 24 ? 8.0 : effectiveWind <= 38 ? 6.7 : 5.2;
     const shelterName = shelteredSouth ? 'Abrité par la Digue' : 'Abrité du Nord';
     return {
       regime: 'sheltered',
@@ -84,7 +108,7 @@ export function evaluateWindForSpot(spot, snapshot) {
   }
 
   if (deltaOffshore <= 105) {
-    const score = speed <= 14 ? 6.8 : speed <= 24 ? 5.2 : speed <= 35 ? 3.8 : 2.4;
+    const score = effectiveWind <= 14 ? 6.8 : effectiveWind <= 24 ? 5.1 : effectiveWind <= 35 ? 3.6 : 2.2;
     return {
       regime: 'cross',
       label: speed <= 16 ? 'Cross-shore léger' : 'Cross-shore (dérive latérale)',
@@ -96,8 +120,7 @@ export function evaluateWindForSpot(spot, snapshot) {
     };
   }
 
-  // Onshore
-  const score = speed <= 12 ? 5.6 : speed <= 20 ? 4.0 : speed <= 32 ? 2.5 : 1.2;
+  const score = effectiveWind <= 12 ? 5.5 : effectiveWind <= 20 ? 3.8 : effectiveWind <= 32 ? 2.3 : 1.1;
   return {
     regime: 'onshore',
     label: speed <= 14 ? 'Onshore faible' : speed <= 28 ? 'Onshore (clapot)' : 'Onshore fort (mer hachée)',
@@ -110,24 +133,26 @@ export function evaluateWindForSpot(spot, snapshot) {
 }
 
 /**
- * Évalue l'adéquation de la houle (taille au spot après réfraction du Gouf + période + direction).
+ * Évalue la houle primaire + angle d'attaque + houle secondaire (wedge vs clapot) + closeout longue période.
  */
-export function evaluateSwellForSpot(spot, snapshot) {
+export function evaluateSwellForSpot(spot, snapshot, surferLevel = 'intermediaire') {
   const h = snapshot.spotWaveHeightM;
   const tp = snapshot.primaryPeriodS;
+  const waveDir = snapshot.waveDirDeg ?? 285;
   const sz = spot.idealSwell.sizeMeters;
   const per = spot.idealSwell.periodSec;
+  const dirs = spot.idealSwell.directionsDeg || { min: 265, optimal: 292, max: 320 };
 
   let sizeScore = 5;
   let status = 'ok';
   let summary = `${h.toFixed(1)} m @ ${tp}s`;
 
-  if (h < sz.min * 0.75) {
+  if (h < sz.min * 0.72) {
     sizeScore = 1.5;
     status = 'flat';
     summary = 'Trop petit / Quasi plat';
   } else if (h < sz.min) {
-    sizeScore = 4.2;
+    sizeScore = surferLevel === 'debutant' ? 6.8 : 4.2;
     status = 'small';
     summary = 'Petites vagues (longboard / mousse)';
   } else if (h >= sz.optimalMin && h <= sz.optimalMax) {
@@ -135,39 +160,105 @@ export function evaluateSwellForSpot(spot, snapshot) {
     status = 'optimal';
     summary = 'Taille idéale pour les bancs';
   } else if (h > sz.optimalMax && h <= sz.maxHold) {
-    sizeScore = 7.8;
+    sizeScore = 7.9;
     status = 'solid';
-    summary = 'Solide et puissant (engagement requis)';
+    summary = 'Solide et puissant';
   } else if (h < sz.optimalMin) {
-    sizeScore = 7.2;
+    sizeScore = surferLevel === 'debutant' ? 8.8 : 7.4;
     status = 'fun';
     summary = 'Joli et accessible';
   } else {
-    // Au-dessus du maxHold !
     const overRatio = h / sz.maxHold;
-    sizeScore = overRatio > 1.35 ? 1.4 : overRatio > 1.15 ? 2.8 : 4.2;
+    sizeScore = overRatio > 1.35 ? 1.3 : overRatio > 1.15 ? 2.6 : 4.0;
     status = 'saturated';
-    summary = `Saturé / Ferme au large (max tenu ~${sz.maxHold} m)`;
+    summary = `Saturé / Ferme au large (max ~${sz.maxHold} m)`;
   }
 
-  // Bonus/malus période
+  // Adéquation de l'angle de houle primaire
+  let dirDelta = 0;
+  const optAngleDiff = angleDiffDeg(waveDir, dirs.optimal || 292);
+  if (optAngleDiff <= 15) dirDelta = 0.35;
+  else if (waveDir < dirs.min - 12 || waveDir > dirs.max + 12) dirDelta = -1.1; // Très oblique -> fort courant latéral
+
+  // Adéquation de la période & VRAIE pénalité Closeout sur les beachbreaks rectilignes (même à taille optimale !)
   let periodDelta = 0;
-  if (tp >= per.optimalMin && tp <= per.optimalMax) periodDelta = 0.8;
-  else if (tp > per.maxHold + 2 && status !== 'optimal' && spot.id !== 'hossegor-la-nord' && spot.id !== 'hossegor-la-graviere') {
-    periodDelta = -0.8; // Closeouts sur beachbreak classique par 17s+
+  if (tp > per.maxHold + 1.2 && !LONG_PERIOD_HOLD_SPOTS.has(spot.id)) {
+    const excessS = tp - per.maxHold;
+    periodDelta = -Math.min(2.6, 0.75 + excessS * 0.45);
+    summary = `Houle longue (${tp}s) : risque de barres fermantes`;
+  } else if (tp >= per.optimalMin && tp <= per.optimalMax) {
+    periodDelta = 0.7;
+  } else if (tp > per.optimalMax && LONG_PERIOD_HOLD_SPOTS.has(spot.id)) {
+    periodDelta = 0.85; // La Gravière, La Nord et La Piste adorent les 15-17s !
   } else if (tp < per.min) {
-    periodDelta = -1.4; // Houle courte / mer du vent molle
+    periodDelta = -1.4;
   }
 
-  // Ratio mer du vent vs houle primaire
+  // Houle secondaire : bonus "Wedge / Pics en A" si croisée propre (écart 18°..55° et période >= 9s)
+  let secDelta = 0;
+  const sec = snapshot.secondarySwell;
+  if (sec && sec.heightM >= 0.35 && sec.dirDeg != null) {
+    const crossAngle = angleDiffDeg(waveDir, sec.dirDeg);
+    if (crossAngle >= 18 && crossAngle <= 58 && sec.periodS >= 8.5) {
+      secDelta = 0.55; // Crée des pics triangulaires qui ouvrent sur le sable !
+    } else if (sec.periodS < 6.5 && sec.heightM >= 0.7) {
+      secDelta = -0.5; // Clapot croisé parasite
+    }
+  }
+
+  // Pénalité mer du vent dominante
   const chopPenalty =
     snapshot.windWaveHeightM > snapshot.offshoreSwellHeightM * 0.85 && snapshot.windWaveHeightM > 1.0 ? -1.0 : 0;
 
-  const score10 = Math.max(1, Math.min(10, +(sizeScore + periodDelta + chopPenalty).toFixed(1)));
+  // Adaptation stricte au NIVEAU DU SURFEUR !
+  let levelAdjustment = 0;
+  let levelNote = null;
+  if (surferLevel === 'debutant') {
+    if (spot.id === 'hossegor-la-nord' && h >= 1.5) {
+      levelAdjustment = -6.5;
+      levelNote = 'Spot Big-Wave au large réservé aux experts';
+    } else if (HEAVY_EXPERT_SPOTS.has(spot.id) && h >= 1.35) {
+      levelAdjustment = -5.8;
+      levelNote = 'Tube creux sur peu d’eau : dangereux pour débuter (repli La Sud / Prévent)';
+    } else if (h > 1.65 || snapshot.spotEnergyKj > 950) {
+      levelAdjustment = -4.6;
+      levelNote = 'Trop puissant pour débutant → privilégier un spot de repli';
+    } else if (h >= 0.45 && h <= 1.15 && !HEAVY_EXPERT_SPOTS.has(spot.id)) {
+      levelAdjustment = 1.1;
+      levelNote = 'Taille douce idéale pour progresser';
+    }
+  } else if (surferLevel === 'intermediaire') {
+    if (spot.id === 'hossegor-la-nord' && h >= 2.3) {
+      levelAdjustment = -4.2;
+      levelNote = 'Engagement Big-Wave élevé pour niveau intermédiaire';
+    } else if (HEAVY_EXPERT_SPOTS.has(spot.id) && h >= 2.0) {
+      levelAdjustment = -2.8;
+      levelNote = 'Lèvre lourde & casse planches dès 2 m';
+    } else if (h > 2.3) {
+      levelAdjustment = -2.2;
+      levelNote = 'Barre physique à passer';
+    }
+  } else if (surferLevel === 'chargeur') {
+    if (h < 1.0) {
+      levelAdjustment = -1.6;
+      levelNote = 'Manque de poussée pour un programme chargeur';
+    } else if (HEAVY_EXPERT_SPOTS.has(spot.id) && h >= 1.8 && h <= sz.maxHold && tp >= 13) {
+      levelAdjustment = 0.8;
+      levelNote = 'Conditions World-Class à tubes / engagement';
+    }
+  }
+
+  const score10 = Math.max(
+    1.0,
+    Math.min(10, +(sizeScore + dirDelta + periodDelta + secDelta + chopPenalty + levelAdjustment).toFixed(1))
+  );
+
   return {
     score10,
     status,
     summary,
+    levelNote,
+    hasWedgeBonus: secDelta > 0,
     isFallbackCandidate:
       snapshot.offshoreWaveHeightM >= 2.5 &&
       (spot.goufInfluence?.swellMultiplier ?? 1) <= 0.7 &&
@@ -196,7 +287,7 @@ export function evaluateTideForSpot(spot, snapshot) {
   if (h >= opt.min && h <= opt.max) {
     score = prefersRising && tide.isRising ? 9.5 : 8.6;
     status = 'optimal';
-    label = tide.isRising ? 'Dans le créneau optimal (montante)' : 'Dans la bonne hauteur d’eau';
+    label = tide.isRising ? 'Créneau optimal (montante)' : 'Bonne hauteur d’eau';
   } else {
     const dist = h < opt.min ? opt.min - h : h - opt.max;
     if (dist <= 0.45) {
@@ -206,14 +297,13 @@ export function evaluateTideForSpot(spot, snapshot) {
     } else {
       score = 3.4;
       status = 'off-window';
-      label = h < opt.min ? 'Trop bas (bancs rapides / fermants)' : 'Trop haut (shorebreak / backwash)';
+      label = h < opt.min ? 'Trop bas (fermant)' : 'Trop haut (shorebreak / backwash)';
     }
   }
 
-  // Pénalité grand coef (>85) à marée haute sur plages à fort talus / backwash
   if (tide.coef >= 85 && h > opt.max) {
     score = Math.max(1.8, score - 1.6);
-    label = `Plein haut gros coef (${tide.coef}) : fort shorebreak / backwash`;
+    label = `Plein haut gros coef (${tide.coef}) : shorebreak / backwash`;
   }
 
   return {
@@ -225,11 +315,9 @@ export function evaluateTideForSpot(spot, snapshot) {
   };
 }
 
-/**
- * Lecture / écriture des signalements d'affluence locaux (vote communautaire instantané).
- */
 export function getLocalCrowdVote(spotId) {
   try {
+    if (typeof localStorage === 'undefined') return null;
     const votes = JSON.parse(localStorage.getItem(CROWD_VOTES_KEY) || '{}');
     const v = votes[spotId];
     if (v && Date.now() - v.ts < 2.5 * 3600_000) return v;
@@ -241,6 +329,7 @@ export function getLocalCrowdVote(spotId) {
 
 export function saveLocalCrowdVote(spotId, levelScore10, label) {
   try {
+    if (typeof localStorage === 'undefined') return;
     const votes = JSON.parse(localStorage.getItem(CROWD_VOTES_KEY) || '{}');
     votes[spotId] = { score10: levelScore10, label, ts: Date.now() };
     localStorage.setItem(CROWD_VOTES_KEY, JSON.stringify(votes));
@@ -249,9 +338,6 @@ export function saveLocalCrowdVote(spotId, levelScore10, label) {
   }
 }
 
-/**
- * Estime l'affluence ("Monde à l'eau") dans le fuseau exact Europe/Paris + lumière réelle + météo + repli.
- */
 export function evaluateCrowdForSpot(spot, snapshot, surfScore10) {
   const parts = getParisDateParts(snapshot.timestamp);
   const hour = parts.decimalHour;
@@ -271,7 +357,7 @@ export function evaluateCrowdForSpot(spot, snapshot, surfScore10) {
     return {
       score10: 1.0,
       level: 'empty',
-      label: 'Désert (conditions tempête / impraticables)',
+      label: 'Désert (conditions impraticables)',
       shortLabel: 'Désert',
       surfersCount: 0,
       hasUserVote: false,
@@ -304,11 +390,14 @@ export function evaluateCrowdForSpot(spot, snapshot, surfScore10) {
   const fallbackMult = snapshot.offshoreWaveHeightM >= 2.6 ? cf.fallbackSurgeOnBigSwell : 1.0;
   const rainDiscount = snapshot.precipMm >= 1.5 ? 0.75 : 1.0;
 
-  let score10 = +Math.min(10, Math.max(1, (base * hourMult * dayMult * qualityMult * fallbackMult * rainDiscount) / 1.15)).toFixed(1);
+  let score10 = +Math.min(
+    10,
+    Math.max(1, (base * hourMult * dayMult * qualityMult * fallbackMult * rainDiscount) / 1.15)
+  ).toFixed(1);
 
   const vote = Math.abs(snapshot.timestamp - Date.now()) < 45 * 60_000 ? getLocalCrowdVote(spot.id) : null;
   if (vote) {
-    score10 = +((score10 * 0.35 + vote.score10 * 0.65)).toFixed(1);
+    score10 = +(score10 * 0.35 + vote.score10 * 0.65).toFixed(1);
   }
 
   const surfersCount = Math.max(1, Math.round(Math.pow(score10 / 10, 1.8) * 62));
@@ -341,9 +430,9 @@ export function evaluateCrowdForSpot(spot, snapshot, surfScore10) {
 }
 
 /**
- * Recommandation précise Néoprène + Wax + Planche selon l'eau, le ressenti et la vague.
+ * Recommandation précise Néoprène + Wax + Planche personnalisée selon le niveau du surfeur !
  */
-export function recommendGear(spot, snapshot) {
+export function recommendGear(spot, snapshot, surferLevel = 'intermediaire') {
   const wt = snapshot.waterTempC;
   const chill = snapshot.apparentTempC;
 
@@ -375,17 +464,26 @@ export function recommendGear(spot, snapshot) {
 
   const h = snapshot.spotWaveHeightM;
   let board = 'Shortboard polyvalent / Daily driver';
-  if (h < 0.85) {
-    board = 'Longboard 9’0+, Mid-length ou Fish volumineux';
+
+  if (surferLevel === 'debutant') {
+    board =
+      h <= 1.2
+        ? 'Planche en mousse (Softboard) 7’6"–8’6" ou Mini-Malibu volumineux'
+        : 'Conditions trop puissantes pour débuter — privilégier un cours encadré sur repli';
+  } else if (surferLevel === 'intermediaire') {
+    if (h < 1.0) board = 'Mid-length 7’0"–7’6", Fish généreux ou Longboard';
+    else if (h <= 1.75) board = 'Hybride évolutive / Shortboard confortable (volume généreux)';
+    else board = 'Mid-length sécurisant ou repli vers Le Prévent / La Sud';
+  } else if (h < 0.85) {
+    board = 'Longboard 9’0+, Mid-length ou Twin/Fish volumineux';
   } else if (h < 1.35) {
     board = 'Fish, Twin-fin ou Shortboard hybride joueur';
   } else if (h <= 2.2) {
-    board =
-      spot.id.includes('graviere') || spot.id.includes('piste') || spot.id.includes('culs-nus') || spot.id.includes('bourdaines')
-        ? 'Shortboard performant round-pin (prise de carre dans le creux) + leash neuf'
-        : 'Shortboard standard ou Mid-length affûté';
+    board = HEAVY_EXPERT_SPOTS.has(spot.id)
+      ? 'Shortboard performant round-pin (prise de carre dans le tube) + leash neuf'
+      : 'Shortboard standard affûté';
   } else if (h <= 3.2) {
-    board = 'Step-up 6’2"–6’8" + Leash épais 7 mm (grosse poussée d’eau)';
+    board = 'Step-up 6’2"–6’8" + Leash épais 7 mm (forte poussée d’eau)';
   } else {
     board =
       spot.id === 'hossegor-la-nord'
@@ -397,37 +495,61 @@ export function recommendGear(spot, snapshot) {
 }
 
 /**
- * Synthèse complète d'un spot à l'instant donné :
- * Note globale sur 10, verdict francophone, sous-notes (Houle, Vent, Marée), Affluence et Équipement.
+ * Synthèse complète v2 d'un spot à l'instant donné, calibrée selon `surferLevel`.
  */
-export function evaluateSpotConditions(spot, snapshot) {
+export function evaluateSpotConditions(spot, snapshot, surferLevel = 'intermediaire') {
   if (!snapshot) return null;
 
   const wind = evaluateWindForSpot(spot, snapshot);
-  const swell = evaluateSwellForSpot(spot, snapshot);
+  const swell = evaluateSwellForSpot(spot, snapshot, surferLevel);
   const tide = evaluateTideForSpot(spot, snapshot);
+  const baines = computeBainesRisk(spot, snapshot);
+  const waterQuality = computeWaterQualityAlert(spot, snapshot);
 
-  // Pondération réaliste : si le spot sature complètement ou est plat, le score global plafonne
-  let rawScore = swell.score10 * 0.44 + wind.score10 * 0.36 + tide.score10 * 0.2;
+  let rawScore = swell.score10 * 0.48 + wind.score10 * 0.34 + tide.score10 * 0.18;
+
   if (swell.status === 'saturated') {
-    rawScore = Math.min(rawScore, swell.score10 + 0.8);
+    rawScore = Math.min(rawScore, swell.score10 + 0.6);
   } else if (swell.status === 'flat') {
-    rawScore = Math.min(rawScore, 2.6);
+    rawScore = Math.min(rawScore, 2.5);
   }
-  if (wind.regime === 'onshore' && snapshot.windSpeedKmh >= 34) {
+
+  // Plafond strict sécurité par niveau surfeur
+  const lvlSpec = SURFER_LEVELS[surferLevel] || SURFER_LEVELS.intermediaire;
+  if (snapshot.spotWaveHeightM > lvlSpec.dangerAboveM || (surferLevel === 'debutant' && swell.score10 <= 3.2)) {
     rawScore = Math.min(rawScore, 3.2);
+  }
+
+  if (wind.regime === 'onshore' && snapshot.windSpeedKmh >= 34) {
+    rawScore = Math.min(rawScore, 3.1);
+  }
+
+  // Légère pénalité sanitaire si alerte panache fluvial active (évite de classer Tarnos #1 en pleine crue de l'Adour !)
+  if (waterQuality.status === 'alert') {
+    rawScore = Math.max(1.2, rawScore - 1.5);
+  }
+
+  // Pénalité baïnes extrêmes pour Débutant
+  if (surferLevel === 'debutant' && baines.level >= 4) {
+    rawScore = Math.min(rawScore, 3.4);
   }
 
   const score10 = +Math.max(1.0, Math.min(9.9, rawScore)).toFixed(1);
 
   let verdict = 'Moyen / À surveiller';
   let verdictTone = 'moderate';
-  if (swell.status === 'saturated') {
+  if (swell.levelNote && score10 <= 3.6 && snapshot.spotWaveHeightM > lvlSpec.idealMaxM) {
+    verdict = `Trop gros (${lvlSpec.label})`;
+    verdictTone = 'bad';
+  } else if (swell.status === 'saturated') {
     verdict = 'Saturé / Trop gros';
     verdictTone = 'bad';
   } else if (swell.status === 'flat') {
     verdict = 'Trop petit';
     verdictTone = 'poor';
+  } else if (waterQuality.status === 'alert' && score10 < 6.5) {
+    verdict = 'Alerte Eau Post-Pluie';
+    verdictTone = 'bad';
   } else if (score10 >= 8.2) {
     verdict = 'Session Épique';
     verdictTone = 'optimal';
@@ -442,8 +564,11 @@ export function evaluateSpotConditions(spot, snapshot) {
     verdictTone = 'bad';
   }
 
-  const crowd = evaluateCrowdForSpot(spot, snapshot, score10);
-  const gear = recommendGear(spot, snapshot);
+  // L'affluence réelle à l'eau dépend de la qualité intrinsèque (niveau confirmé), pas du filtre débutant !
+  const intrinsicSwell = surferLevel === 'confirme' ? swell : evaluateSwellForSpot(spot, snapshot, 'confirme');
+  const intrinsicScore = Math.min(9.9, intrinsicSwell.score10 * 0.48 + wind.score10 * 0.34 + tide.score10 * 0.18);
+  const crowd = evaluateCrowdForSpot(spot, snapshot, intrinsicScore);
+  const gear = recommendGear(spot, snapshot, surferLevel);
 
   return {
     score10,
@@ -452,16 +577,23 @@ export function evaluateSpotConditions(spot, snapshot) {
     wind,
     swell,
     tide,
+    baines,
+    waterQuality,
     crowd,
     gear,
   };
 }
 
 /**
- * Scanne les 48 prochaines heures (heures de jour surfables) sur les 19 spots
- * pour identifier les meilleures fenêtres de surf à venir ("Où et quand surfer ?").
+ * Scanne les 48 prochaines heures (heures de jour surfables) selon le `surferLevel` choisi !
  */
-export function findBestUpcomingSessions(spots, telemetryBySpot, getSnapshotFn, fromMs = Date.now()) {
+export function findBestUpcomingSessions(
+  spots,
+  telemetryBySpot,
+  getSnapshotFn,
+  fromMs = Date.now(),
+  surferLevel = 'intermediaire'
+) {
   const candidates = [];
   const startHourMs = Math.ceil(fromMs / 3600_000) * 3600_000;
 
@@ -482,7 +614,7 @@ export function findBestUpcomingSessions(spots, telemetryBySpot, getSnapshotFn, 
         continue;
       }
 
-      const evalRes = evaluateSpotConditions(spot, snap);
+      const evalRes = evaluateSpotConditions(spot, snap, surferLevel);
       if (evalRes.score10 >= 6.4 && evalRes.swell.status !== 'saturated' && evalRes.swell.status !== 'flat') {
         if (!currentWindow) {
           currentWindow = {
@@ -511,7 +643,6 @@ export function findBestUpcomingSessions(spots, telemetryBySpot, getSnapshotFn, 
     if (currentWindow) candidates.push(currentWindow);
   }
 
-  // Si tempête majeure et peu de créneaux >= 6.4, on prend quand même les meilleurs replis diurnes >= 4.8
   if (candidates.length < 4) {
     for (const spot of spots) {
       const tel = telemetryBySpot[spot.id];
@@ -521,7 +652,7 @@ export function findBestUpcomingSessions(spots, telemetryBySpot, getSnapshotFn, 
         const ts = startHourMs + h * 3600_000;
         const snap = getSnapshotFn(spot, tel, ts, false);
         if (!snap || !snap.isSurfableLight) continue;
-        const evalRes = evaluateSpotConditions(spot, snap);
+        const evalRes = evaluateSpotConditions(spot, snap, surferLevel);
         if (!bestForSpot || evalRes.score10 > bestForSpot.peakScore) {
           bestForSpot = {
             spot,
@@ -534,7 +665,10 @@ export function findBestUpcomingSessions(spots, telemetryBySpot, getSnapshotFn, 
           };
         }
       }
-      if (bestForSpot && !candidates.some((c) => c.spot.id === spot.id && Math.abs(c.startMs - bestForSpot.startMs) < 4 * 3600_000)) {
+      if (
+        bestForSpot &&
+        !candidates.some((c) => c.spot.id === spot.id && Math.abs(c.startMs - bestForSpot.startMs) < 4 * 3600_000)
+      ) {
         candidates.push(bestForSpot);
       }
     }
